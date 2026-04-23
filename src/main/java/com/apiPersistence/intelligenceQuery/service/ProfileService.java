@@ -38,14 +38,30 @@ public class ProfileService {
             int page,
             int limit
     ) {
+        // normalize
+        if (gender != null) gender = gender.trim().toLowerCase();
+        if (ageGroup != null) ageGroup = ageGroup.trim().toLowerCase();
+        if (countryId != null) countryId = countryId.trim().toUpperCase();
+        if (sortBy != null) sortBy = sortBy.trim().toLowerCase();
+        if (order != null) order = order.trim().toLowerCase();
 
-        if(limit > 50) {
-            limit = 50;
+        // validate
+        if (page < 1) {
+            throw new IllegalArgumentException("Invalid query parameters");
+        }
+        if (limit < 1 || limit > 50) {
+            throw new IllegalArgumentException("Invalid query parameters");
+        }
+        if (gender != null && !gender.equals("male") && !gender.equals("female")) {
+            throw new IllegalArgumentException("Invalid query parameters");
         }
 
-        if(limit < 1) {
-            limit = 10;
+        boolean validSortBy = sortBy == null || sortBy.equals("age") || sortBy.equals("created_at") || sortBy.equals("gender_probability");
+        boolean validOrder = order == null || order.equals("asc") || order.equals("desc");
+        if (!validSortBy || !validOrder) {
+            throw new IllegalArgumentException("Invalid query parameters");
         }
+
         Specification<Profile> specification =
                 ProfileSpecification.hasGender(gender)
                         .and(ProfileSpecification.hasAgeGroup(ageGroup))
@@ -55,16 +71,13 @@ public class ProfileService {
                         .and(ProfileSpecification.minGenderProbability(minGenderProb))
                         .and(ProfileSpecification.minCountryProbability(minCountryProb));
 
-        String sortField = switch (sortBy == null ? "" : sortBy){
+        String sortField = switch (sortBy == null ? "created_at" : sortBy) {
             case "age" -> "age";
             case "gender_probability" -> "genderProbability";
-            case "created_at"         -> "createdAt";
-            default                   -> "createdAt";
+            default -> "createdAt";
         };
-        Sort.Direction direction = "asc".equalsIgnoreCase(order)
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
 
+        Sort.Direction direction = "asc".equals(order) ? Sort.Direction.ASC : Sort.Direction.DESC;
         Pageable pageable = PageRequest.of(page - 1, limit, Sort.by(direction, sortField));
 
         Page<Profile> result = profileRepository.findAll(specification, pageable);
@@ -72,8 +85,7 @@ public class ProfileService {
         List<ProfileResponse> data = result.getContent()
                 .stream()
                 .map(ProfileResponse::from)
-                .collect(Collectors.toList());
-
+                .toList();
 
         return Map.of(
                 "status", "success",
@@ -82,6 +94,5 @@ public class ProfileService {
                 "total", result.getTotalElements(),
                 "data", data
         );
-
     }
 }

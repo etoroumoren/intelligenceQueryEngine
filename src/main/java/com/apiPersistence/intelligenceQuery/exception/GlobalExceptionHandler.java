@@ -41,4 +41,18 @@ public class GlobalExceptionHandler {
                 Map.of("status", "error", "message", "Server failure")
         );
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException ex) {
+        if ("Invalid query parameters".equals(ex.getMessage())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "error",
+                    "message", "Invalid query parameters"
+            ));
+        }
+        return ResponseEntity.badRequest().body(Map.of(
+                "status", "error",
+                "message", ex.getMessage() == null ? "Bad Request" : ex.getMessage()
+        ));
+    }
 }

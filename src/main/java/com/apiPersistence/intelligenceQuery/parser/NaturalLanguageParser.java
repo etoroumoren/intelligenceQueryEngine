@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
 @Component
 public class NaturalLanguageParser {
 
@@ -19,46 +18,54 @@ public class NaturalLanguageParser {
         String q = query.toLowerCase().trim();
         FilterParams params = new FilterParams();
 
-        if (q.contains("female")) {
-            params.setGender("female");
-        } else if (q.contains("male")) {
-            params.setGender("male");
-        }
+        // Gender: if both present, do not constrain gender
+        boolean hasMale = containsAnyWord(q, "male", "males", "man", "men");
+        boolean hasFemale = containsAnyWord(q, "female", "females", "woman", "women");
 
-        // 2. Age Group Detection
-        if (q.contains("child") || q.contains("children")) {
+        if (hasMale && !hasFemale) params.setGender("male");
+        if (hasFemale && !hasMale) params.setGender("female");
+
+        // Age group
+        if (containsAnyWord(q, "child", "children")) {
             params.setAgeGroup("child");
-        } else if (q.contains("teenager")) {
+        } else if (containsAnyWord(q, "teenager", "teenagers", "teen", "teens")) {
             params.setAgeGroup("teenager");
-        } else if (q.contains("adult")) {
+        } else if (containsAnyWord(q, "adult", "adults")) {
             params.setAgeGroup("adult");
-        } else if (q.contains("senior")) {
+        } else if (containsAnyWord(q, "senior", "seniors", "elderly")) {
             params.setAgeGroup("senior");
         }
 
-        if (q.contains("young")) {
+        // young => 16..24
+        if (containsAnyWord(q, "young")) {
             params.setMinAge(16);
             params.setMaxAge(24);
         }
 
-        Pattern abovePattern = Pattern.compile("above (\\d+)");
-        Matcher matcher = abovePattern.matcher(q);
-        if (matcher.find()) {
-            params.setMinAge(Integer.parseInt(matcher.group(1)));
+        // above / over
+        Matcher above = Pattern.compile("\\b(above|over|older than)\\s+(\\d+)\\b").matcher(q);
+        if (above.find()) {
+            params.setMinAge(Integer.parseInt(above.group(2)));
         }
 
-        // 5. Country Detection
-        Map<String, String> countryMap = Map.of(
-                "nigeria", "NG",
-                "kenya", "KE",
-                "ghana", "GH",
-                "angola", "AO",
-                "benin", "BJ"
+        // below / under
+        Matcher below = Pattern.compile("\\b(below|under|younger than)\\s+(\\d+)\\b").matcher(q);
+        if (below.find()) {
+            params.setMaxAge(Integer.parseInt(below.group(2)));
+        }
+
+        // Country mapping
+        Map<String, String> countryMap = Map.ofEntries(
+                Map.entry("nigeria", "NG"),
+                Map.entry("kenya", "KE"),
+                Map.entry("ghana", "GH"),
+                Map.entry("angola", "AO"),
+                Map.entry("benin", "BJ")
         );
 
-        for (Map.Entry<String, String> entry : countryMap.entrySet()) {
-            if (q.contains(entry.getKey())) {
-                params.setCountryId(entry.getValue());
+        for (var e : countryMap.entrySet()) {
+            if (q.contains(e.getKey())) {
+                params.setCountryId(e.getValue());
                 break;
             }
         }
@@ -68,5 +75,12 @@ public class NaturalLanguageParser {
         }
 
         return params;
+    }
+
+    private boolean containsAnyWord(String text, String... words) {
+        for (String w : words) {
+            if (Pattern.compile("\\b" + Pattern.quote(w) + "\\b").matcher(text).find()) return true;
+        }
+        return false;
     }
 }

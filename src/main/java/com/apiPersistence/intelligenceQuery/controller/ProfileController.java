@@ -51,18 +51,25 @@ public class ProfileController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int limit
     ) {
-            FilterParams params = parser.parse(query);
+        if (query == null || query.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "error",
+                    "message", "Missing or empty parameter"
+            ));
+        }
 
-            Map<String, Object> response = profileService.getProfiles(
-                    params.getGender(),
-                    params.getAgeGroup(),
-                    params.getCountryId(),
-                    params.getMinAge(),
-                    params.getMaxAge(),
-                    null, null,
-                    "created_at", "desc", page, limit
-            );
+        FilterParams params = parser.parse(query);
 
-            return ResponseEntity.ok(response);
+        Map<String, Object> response = profileService.getProfiles(
+                params.getGender(),
+                params.getAgeGroup(),
+                params.getCountryId(),
+                params.getMinAge(),
+                params.getMaxAge(),
+                null, null,
+                "created_at", "desc", page, limit
+        );
+
+        return ResponseEntity.ok(response);
     }
 }

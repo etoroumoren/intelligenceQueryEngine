@@ -7,15 +7,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.InputStream;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -31,34 +31,56 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if (repository.count() > 0) {
-            log.info("Database already contains data. Skipping seeding process.");
-            return;
-        }
-
         try (InputStream is = new ClassPathResource("profiles.json").getInputStream()) {
-            JsonNode rootNode = mapper.readTree(is);
-
-            JsonNode dataNode = rootNode.isArray()
-                    ? rootNode
-                    : rootNode.get("profiles");
+            JsonNode root = mapper.readTree(is);
+            JsonNode dataNode = root.isArray() ? root : root.get("profiles");
 
             if (dataNode == null || !dataNode.isArray()) {
-                throw new RuntimeException("Could not find a JSON array in profiles.json");
+                throw new RuntimeException("profiles.json must contain an array (root or 'profiles').");
             }
 
-            List<Profile> profiles = mapper.convertValue(
-                    dataNode,
-                    new TypeReference<List<Profile>>() {}
-            );
+            List<Profile> toSave = new ArrayList<>();
 
-            profiles.forEach(p -> {
-                p.setId(null);
-                p.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
-            });
+            for (JsonNode n : dataNode) {
+                String name = text(n, "name");
+                if (name == null || name.isBlank()) continue;
 
-            repository.saveAll(profiles);
-            log.info("Successfully seeded {} profiles.", profiles.size());
+                Optional<Profile> existing = repository.findByName(name);
+                Profile p = existing.orElseGet(Profile::new);
+
+                p.setName(name);
+                p.setGender(text(n, "gender"));
+                p.setGenderProbability(number(n, "gender_probability"));
+                p.setAge(intNumber(n, "age"));
+                p.setAgeGroup(text(n, "age_group"));
+                p.setCountryId(text(n, "country_id"));
+                p.setCountryName(text(n, "country_name"));
+                p.setCountryProbability(number(n, "country_probability"));
+
+                if (p.getCreatedAt() == null) {
+                    p.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+                }
+
+                toSave.add(p);
+            }
+
+            repository.saveAll(toSave);
+            log.info("Seed upsert completed. processed={}", toSave.size());
         }
+    }
+
+    private String text(JsonNode n, String key) {
+        JsonNode v = n.get(key);
+        return (v == null || v.isNull()) ? null : v.asText();
+    }
+
+    private Double number(JsonNode n, String key) {
+        JsonNode v = n.get(key);
+        return (v == null || v.isNull()) ? null : v.asDouble();
+    }
+
+    private Integer intNumber(JsonNode n, String key) {
+        JsonNode v = n.get(key);
+        return (v == null || v.isNull()) ? null : v.asInt();
     }
 }
