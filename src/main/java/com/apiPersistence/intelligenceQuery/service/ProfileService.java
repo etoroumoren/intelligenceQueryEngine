@@ -2,6 +2,7 @@ package com.apiPersistence.intelligenceQuery.service;
 
 
 import com.apiPersistence.intelligenceQuery.entity.Profile;
+import com.apiPersistence.intelligenceQuery.entity.ProfileResponse;
 import com.apiPersistence.intelligenceQuery.repository.ProfileRepository;
 import com.apiPersistence.intelligenceQuery.repository.ProfileSpecification;
 import org.springframework.data.domain.Page;
@@ -11,7 +12,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class ProfileService {
@@ -66,12 +69,18 @@ public class ProfileService {
 
         Page<Profile> result = profileRepository.findAll(specification, pageable);
 
+        List<ProfileResponse> data = result.getContent()
+                .stream()
+                .map(ProfileResponse::from)
+                .collect(Collectors.toList());
+
+
         return Map.of(
                 "status", "success",
                 "page", page,
                 "limit", limit,
                 "total", result.getTotalElements(),
-                "data", result.getContent()
+                "data", data
         );
 
     }

@@ -2,18 +2,20 @@ package com.apiPersistence.intelligenceQuery.seeding;
 
 import com.apiPersistence.intelligenceQuery.entity.Profile;
 import com.apiPersistence.intelligenceQuery.repository.ProfileRepository;
-import com.github.f4b6a3.uuid.UuidCreator;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.DeserializationFeature;
 
 import java.io.InputStream;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
-import org.slf4j.Logger;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -22,11 +24,9 @@ public class DataSeeder implements CommandLineRunner {
     private final ObjectMapper mapper;
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
-    public DataSeeder(ProfileRepository repository){
+    public DataSeeder(ProfileRepository repository) {
         this.repository = repository;
         this.mapper = new ObjectMapper();
-        this.mapper.enable(com.fasterxml.jackson.core.JsonParser.Feature.ALLOW_UNQUOTED_CONTROL_CHARS);
-        this.mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     @Override
@@ -37,26 +37,28 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         try (InputStream is = new ClassPathResource("profiles.json").getInputStream()) {
-            com.fasterxml.jackson.databind.JsonNode rootNode = mapper.readTree(is);
+            JsonNode rootNode = mapper.readTree(is);
 
-            com.fasterxml.jackson.databind.JsonNode dataNode = rootNode.isArray()
+            JsonNode dataNode = rootNode.isArray()
                     ? rootNode
-                    : rootNode.get("profiles"); // Adjust "profiles" to "data" or whatever the key is
+                    : rootNode.get("profiles");
 
             if (dataNode == null || !dataNode.isArray()) {
                 throw new RuntimeException("Could not find a JSON array in profiles.json");
             }
 
-            // 3. Convert that specific node into your List
-            List<Profile> profiles = mapper.convertValue(dataNode, new TypeReference<List<Profile>>() {});
+            List<Profile> profiles = mapper.convertValue(
+                    dataNode,
+                    new TypeReference<List<Profile>>() {}
+            );
 
             profiles.forEach(p -> {
                 p.setId(null);
-                p.setCreatedAt(OffsetDateTime.now(java.time.ZoneOffset.UTC));
+                p.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
             });
 
             repository.saveAll(profiles);
-            System.out.println("Successfully seeded " + profiles.size() + " profiles.");
+            log.info("Successfully seeded {} profiles.", profiles.size());
         }
     }
 }

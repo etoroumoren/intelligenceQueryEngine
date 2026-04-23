@@ -2,9 +2,8 @@ package com.apiPersistence.intelligenceQuery.entity;
 
 
 import com.apiPersistence.intelligenceQuery.uuidGenerator.Uuidv7;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import tools.jackson.databind.annotation.JsonNaming;
+import tools.jackson.databind.PropertyNamingStrategies;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -65,9 +64,6 @@ public class Profile {
     @Column(name = "country_probability")
     private Double countryProbability;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING,
-            pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-            timezone = "UTC")
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
