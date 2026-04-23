@@ -2,6 +2,7 @@ package com.apiPersistence.intelligenceQuery.entity;
 
 
 import com.apiPersistence.intelligenceQuery.uuidGenerator.Uuidv7;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,7 +35,6 @@ public class Profile {
 
     @Id
     @Uuidv7
-    @GeneratedValue(generator = "uuidv7")
     @Column(nullable = false, updatable = false)
     private UUID id;
 
