@@ -12,49 +12,43 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
-
 @Data
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "users")
-public class User {
+@Table(name = "refresh_tokens")
+public class RefreshToken {
 
     @Id
     @Uuidv7
-    @Column(nullable = false, updatable = false)
+    @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(name = "github_id", unique = true, nullable = false)
-    private String githubId;
+    @Column(name = "token_hash", nullable = false, unique = true)
+    private String tokenHash;
 
-    @Column(name = "username", nullable = false)
-    private String username;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
-    @Column(name = "email")
-    private String email;
+    @Column(name = "expires_at", nullable = false)
+    private OffsetDateTime expiresAt;
 
-    @Column(name = "avatar_url")
-    private String avatarUrl;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false)
-    private Role role = Role.ANALYST;
-
-    @Column(name = "is_active", nullable = false)
-    private Boolean isActive = true;
-
-    @Column(name = "last_login_at")
-    private OffsetDateTime lastLoginAt;
+    @Column(name = "revoked", nullable = false)
+    private Boolean revoked = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
+
+    @Column(name = "last_used_at", nullable = true)
+    private OffsetDateTime lastUsedAt;
 
     @PrePersist
     protected void onCreate() {
         if(this.createdAt == null) {
             this.createdAt = OffsetDateTime.now(ZoneOffset.UTC);
         }
+
+        if(this.revoked == null) this.revoked = false;
     }
 }
